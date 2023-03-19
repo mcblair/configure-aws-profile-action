@@ -2,6 +2,10 @@ name: Configure AWS Profile
 
 description: Configures an OIDC AWS Role Session as an aws config profile.
 
+branding:
+  icon: 'cloud'
+  color: 'orange'
+
 inputs:
   role-arn:
     required: true
