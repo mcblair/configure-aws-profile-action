@@ -11,13 +11,14 @@ inputs:
   profile:
     required: true
     description: Name of profile to be created
+    default: "default"
   only-profile:
     description: Whether to unset credentials in the environment after writing to the profile. May be useful if you run this action multiple times in the same job
-    default: true
+    default: "true"
     required: false
   whoami:
     description: Whether to run `aws sts get-caller-identity` after configuring the profile
-    default: false
+    default: "false"
     required: false
 
   # Copied from aws-actions/configure-aws-credentials@v3
