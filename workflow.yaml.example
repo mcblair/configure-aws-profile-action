@@ -1,0 +1,65 @@
+name: main
+
+on: # yamllint disable-line rule:truthy
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+env:
+  AWS_CONFIG_FILE: ${{ github.workspace }}/.aws/config # If using docker containers in any step later, use this to pass the creds to the container
+  AWS_SHARED_CREDENTIALS_FILE: ${{ github.workspace }}/.aws/credentials # Similar to above
+  AWS_DEFAULT_REGION: ap-south-1
+  REPO_NAME: ${{ github.event.repository.name }}
+  ROLE_1_PROFILE: "ROLE_1_PROFILE"
+  ROLE_2_PROFILE: "ROLE_2_PROFILE"
+
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # This is required for actions/checkout
+      id-token: write # This is required for requesting the token from AWS STS
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials ROLE 1
+        uses: moulick/configure-aws-profile-action@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/role-1
+          role-session-name: GithubActions-${{ env.REPO_NAME }}-${{ github.workflow }}-${{ github.run_id }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          profile: ${{ env.ROLE_1_PROFILE }}
+          only-profile: true
+          whoami: true
+
+      - name: Configure AWS credentials ROLE 2
+        uses: moulick/configure-aws-profile-action@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/role-2
+          role-session-name: GithubActions-${{ env.REPO_NAME }}-${{ github.workflow }}-${{ github.run_id }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          profile: ${{ env.ROLE_2_PROFILE }}
+          only-profile: true
+          whoami: true
+        continue-on-error: true
+
+      - name: check outputs
+        run: |
+          echo "ROLE_1_PROFILE: ${{ steps.configure-aws-credentials-role-1.outputs.profile }}"
+          echo "ROLE_2_PROFILE: ${{ steps.configure-aws-credentials-role-2.outputs.profile }}"
+
+      # We'll check that we cannot access AWS without providing the PROFILE, it should not work with env vars
+      - name: Check AWS credentials
+        run: |
+          aws sts get-caller-identity || true
+          aws sts get-caller-identity --profile ${{ env.ROLE_1_PROFILE }}
+          aws sts get-caller-identity --profile ${{ env.ROLE_2_PROFILE }}
+
+          echo $AWS_ACCESS_KEY_ID
+          echo $AWS_SECRET_ACCESS_KEY
+          echo $AWS_SESSION_TOKEN

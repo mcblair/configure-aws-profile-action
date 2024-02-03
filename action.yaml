@@ -7,7 +7,7 @@ branding:
   color: "orange"
 
 inputs:
-  # Additional inputs vs aws-actions/configure-aws-credentials@v3
+  # Additional inputs vs aws-actions/configure-aws-credentials@v4
   profile:
     required: true
     description: Name of profile to be created
@@ -21,7 +21,7 @@ inputs:
     default: "false"
     required: false
 
-  # Copied from aws-actions/configure-aws-credentials@v3
+  # Copied from aws-actions/configure-aws-credentials@v4
   aws-region:
     description: AWS Region, e.g. us-east-2
     required: true
@@ -80,6 +80,9 @@ inputs:
   retry-max-attempts:
     description: The maximum number of attempts it will attempt to retry the assume role call. By default it will retry 12 times
     required: false
+  special-characters-workaround:
+    description: Some environments do not support special characters in AWS_SECRET_ACCESS_KEY. This option will retry fetching credentials until the secret access key does not contain special characters. This option overrides disable-retry and retry-max-attempts. This option is disabled by default
+    required: false
 
 outputs:
   aws-account-id:
@@ -94,6 +97,10 @@ outputs:
   aws-session-token:
     description: The AWS session token for the provided credentials
     value: ${{ steps.aws-credentials.outputs.aws-session-token }}
+  # Adding this output just in case someone needs it, it's the same as the input anyways
+  profile:
+    description: The name of the profile that was configured
+    value: ${{ steps.save-to-profile.outputs.profile }}
 
 runs:
   using: "composite"
@@ -103,13 +110,13 @@ runs:
       id: unset-empty-env-vars
       shell: bash
       run: |
-        if [[ -z "$AWS_ACCESS_KEY_ID" ]]     ; then unset AWS_ACCESS_KEY_ID;     fi
+        if   [[ -z "$AWS_ACCESS_KEY_ID" ]]   ; then unset AWS_ACCESS_KEY_ID;     fi
+        if   [[ -z "$AWS_SESSION_TOKEN" ]]   ; then unset AWS_SESSION_TOKEN;     fi
         if [[ -z "$AWS_SECRET_ACCESS_KEY" ]] ; then unset AWS_SECRET_ACCESS_KEY; fi
-        if [[ -z "$AWS_SESSION_TOKEN" ]]     ; then unset AWS_SESSION_TOKEN;     fi
 
     - name: Get AWS Credentials
       id: aws-credentials
-      uses: aws-actions/configure-aws-credentials@v3
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         output-credentials: true
 
@@ -132,26 +139,32 @@ runs:
         unset-current-credentials: ${{ inputs.unset-current-credentials }}
         disable-retry: ${{ inputs.disable-retry }}
         retry-max-attempts: ${{ inputs.retry-max-attempts }}
+        special-characters-workaround: ${{ inputs.special-characters-workaround }}
 
     - name: Save to Profile
+      id: save-to-profile
       shell: bash
       run: |
+        echo "Configuring AWS Profile ${{ inputs.profile }}"
         aws configure set --profile ${{ inputs.profile }} region                ${{ inputs.aws-region }}
         aws configure set --profile ${{ inputs.profile }} aws_access_key_id     ${{ steps.aws-credentials.outputs.aws-access-key-id }}
         aws configure set --profile ${{ inputs.profile }} aws_secret_access_key ${{ steps.aws-credentials.outputs.aws-secret-access-key }}
         aws configure set --profile ${{ inputs.profile }} aws_session_token     ${{ steps.aws-credentials.outputs.aws-session-token }}
+        echo "profile=${{ inputs.profile }}" >> $GITHUB_OUTPUT
+        echo "::notice::AWS Profile ${{ inputs.profile }} configured successfully"
 
-    # https://github.com/actions/runner/issues/1126 This still leaves behind the env vars
-    - name: Set AWS Environment Variables to empty
+    # We cannot unset the variables due to https://github.com/actions/runner/issues/1126, but we can set them to fake values to prevent accidental use
+    - name: Set AWS Environment Variables to fake values
       id: unset-env-vars
       if: inputs.only-profile
       shell: bash
       run: |
-        echo AWS_SECRET_ACCESS_KEY="" >> $GITHUB_ENV
-        echo AWS_ACCESS_KEY_ID=""     >> $GITHUB_ENV
-        echo AWS_SESSION_TOKEN=""     >> $GITHUB_ENV
+        echo "Setting dummy AWS Environment Variables"
+        echo AWS_SECRET_ACCESS_KEY="No value here, please use the profile as \"aws --profile ${{ inputs.profile }} <command>\"" >> $GITHUB_ENV
+        echo AWS_ACCESS_KEY_ID="No value here, please use the profile as \"aws --profile ${{ inputs.profile }} <command>\""     >> $GITHUB_ENV
+        echo AWS_SESSION_TOKEN="No value here, please use the profile as \"aws --profile ${{ inputs.profile }} <command>\""     >> $GITHUB_ENV
 
-    - name: Check auth with Profile
+    - name: Check Who Am I
       id: whoami
       if: inputs.whoami
       shell: bash
