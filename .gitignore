@@ -1,0 +1,9 @@
+*
+*.*
+!.gitattributes
+!.gitignore
+!readme.md
+!LICENSE
+!*.yaml
+!*.yml
+!*.yaml
