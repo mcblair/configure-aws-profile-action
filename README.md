@@ -51,7 +51,7 @@ jobs:
 
       - name: Configure AWS credentials ROLE 1
         id: configure-aws-credentials-role-1
-        uses: moulick/configure-multi-aws-profiles@bump-v4
+        uses: moulick/configure-multiple-aws-roles@bump-v4
         with:
           role-to-assume: arn:aws:iam::123456789012:role/role-1
           role-session-name: GithubActions-${{ env.REPO_NAME }}-${{ github.workflow }}-${{ github.run_id }}
@@ -62,7 +62,7 @@ jobs:
 
       - name: Configure AWS credentials ROLE 2
         id: configure-aws-credentials-role-2
-        uses: moulick/configure-multi-aws-profiles@bump-v4
+        uses: moulick/configure-multiple-aws-roles@bump-v4
         with:
           role-to-assume: arn:aws:iam::123456789012:role/role-2
           role-session-name: GithubActions-${{ env.REPO_NAME }}-${{ github.workflow }}-${{ github.run_id }}
@@ -104,7 +104,7 @@ jobs:
 
       - name: Configure AWS credentials role test
         id: configure-aws-credentials-role-test
-        uses: moulick/configure-multi-aws-profiles@bump-v4
+        uses: moulick/configure-multiple-aws-roles@bump-v4
         with:
           role-to-assume: arn:aws:iam::123456789012:role/role-test
           role-session-name: GithubActions-${{ env.REPO_NAME }}-${{ github.workflow }}-${{ github.run_id }}

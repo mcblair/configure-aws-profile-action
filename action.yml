@@ -1,4 +1,4 @@
-name: Configure AWS Profile
+name: Configure Multiple AWS Roles
 
 description: Configures an OIDC AWS Role Session as an aws config profile.
 
